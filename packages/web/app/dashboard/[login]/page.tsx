@@ -11,7 +11,7 @@ export default async function ChannelDashboardPage({
   const { login } = await params;
 
   const session = await auth();
-  if (!session) redirect("/api/auth/signin");
+  if (!session) redirect("/");
 
   const access = await resolveChannelAccess(login);
   if (!access) notFound();

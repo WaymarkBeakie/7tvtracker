@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { auth, signOut } from "@/auth";
+import { auth, signIn, signOut } from "@/auth";
 import { prisma } from "@emotetracker/db";
 import { ChannelDropdown } from "./channel-dropdown";
 
@@ -52,12 +52,19 @@ export async function Navbar() {
             </form>
           </div>
         ) : (
-          <Link
-            href="/api/auth/signin"
-            className="rounded-lg bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-400 hover:bg-emerald-500/20"
+          <form
+            action={async () => {
+              "use server";
+              await signIn("twitch", { redirectTo: "/dashboard" });
+            }}
           >
-            Sign in with Twitch
-          </Link>
+            <button
+              type="submit"
+              className="rounded-lg bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-400 hover:bg-emerald-500/20"
+            >
+              Sign in with Twitch
+            </button>
+          </form>
         )}
       </div>
     </nav>

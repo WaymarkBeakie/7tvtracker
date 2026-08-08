@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { auth, signIn } from "@/auth";
 import { redirect } from "next/navigation";
 
 export default async function HomePage() {
@@ -14,12 +14,19 @@ export default async function HomePage() {
         See which 7TV emotes your chat actually uses, and how often. Sign in with Twitch to get
         started.
       </p>
-      
-      <a href="/api/auth/signin"
-        className="mt-6 rounded-lg bg-emerald-500/10 px-5 py-2.5 text-sm font-medium text-emerald-400 hover:bg-emerald-500/20"
+      <form
+        action={async () => {
+          "use server";
+          await signIn("twitch", { redirectTo: "/dashboard" });
+        }}
       >
-        Sign in with Twitch
-      </a>
+        <button
+          type="submit"
+          className="mt-6 rounded-lg bg-emerald-500/10 px-5 py-2.5 text-sm font-medium text-emerald-400 hover:bg-emerald-500/20"
+        >
+          Sign in with Twitch
+        </button>
+      </form>
     </main>
   );
 }

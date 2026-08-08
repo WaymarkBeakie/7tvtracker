@@ -6,7 +6,7 @@ import { DashboardView } from "./dashboard-view";
 
 export default async function DashboardPage() {
   const access = await resolveChannelAccess();
-  if (!access) redirect("/api/auth/signin");
+  if (!access) redirect("/");
 
   const session = await auth();
   console.log("[debug] session twitchId:", (session as any)?.twitchId);
