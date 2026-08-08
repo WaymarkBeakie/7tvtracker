@@ -4,6 +4,18 @@ import { prisma } from "@emotetracker/db";
 import { revalidatePath } from "next/cache";
 import { resolveChannelAccess } from "@/lib/channel-access";
 
+export async function toggleBot(enabled: boolean, channelLogin?: string) {
+  const access = await resolveChannelAccess(channelLogin);
+  if (!access) throw new Error("Not authorized");
+
+  await prisma.channel.update({
+    where: { id: access.channel.id },
+    data: { botEnabled: enabled },
+  });
+
+  revalidatePath(channelLogin ? `/dashboard/${channelLogin}` : "/dashboard");
+}
+
 export async function getEmoteStats(emoteId: string, days = 14, channelLogin?: string) {
   const access = await resolveChannelAccess(channelLogin);
   if (!access) throw new Error("Not authorized");
