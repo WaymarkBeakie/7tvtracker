@@ -56,7 +56,24 @@ const staleRows = await prisma.emoteUsage.findMany({
   console.log(`[rollup] rolled up ${buckets.size} bucket(s), deleted ${staleRows.length} raw row(s)`);
 }
 
+const RETENTION_DAYS = 90;
+
+async function purgeOldData() {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - RETENTION_DAYS);
+  cutoff.setHours(0, 0, 0, 0);
+
+  const deleted = await prisma.emoteUsageDaily.deleteMany({
+    where: { date: { lt: cutoff } },
+  });
+
+  if (deleted.count > 0) {
+    console.log(`[purge] deleted ${deleted.count} daily record(s) older than ${RETENTION_DAYS} days`);
+  }
+}
+
 runRollup()
+  .then(() => purgeOldData())
   .then(() => {
     console.log("[rollup] done");
     process.exit(0);

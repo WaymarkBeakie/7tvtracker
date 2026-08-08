@@ -6,18 +6,34 @@ import { getValidBotToken } from "./auth";
 import { REFRESH_BUFFER_MS } from "./auth";
 import { SevenTvEventClient } from "./eventapi";
 
-// Maps 7TV emote set ID -> the channel it belongs to, so dispatches can be routed
+// Maps 7TV emote set ID -> the channel it belongs to
 const setIdToChannel = new Map<string, { login: string; twitchId: string; dbId: string }>();
+
+const pendingRefreshes = new Map<string, NodeJS.Timeout>();
 
 const eventClient = new SevenTvEventClient(async (emoteSetId) => {
   const channel = setIdToChannel.get(emoteSetId);
   if (!channel) return;
-  console.log(`[7tv-events] refreshing emotes for #${channel.login}`);
-  await refreshChannelEmotes(channel.login, channel.twitchId, channel.dbId);
+
+  const existing = pendingRefreshes.get(emoteSetId);
+  if (existing) clearTimeout(existing);
+
+  pendingRefreshes.set(
+    emoteSetId,
+    setTimeout(async () => {
+      pendingRefreshes.delete(emoteSetId);
+      console.log(`[7tv-events] refreshing emotes for #${channel.login}`);
+      try {
+        await refreshChannelEmotes(channel.login, channel.twitchId, channel.dbId);
+      } catch (err) {
+        console.error(`[7tv-events] refresh failed for #${channel.login}:`, err);
+      }
+    }, 5000)
+  );
 });
 
 const POLL_INTERVAL_MS = 30_000;
-const EMOTE_REFRESH_INTERVAL_MS = 10 * 60_000;
+const EMOTE_REFRESH_INTERVAL_MS = 6 * 60 * 60_000; // 6 hours
 const TOKEN_CHECK_INTERVAL_MS = 60_000; // check every minute, refresh only when close to expiry
 
 let client: tmi.Client;
@@ -131,8 +147,14 @@ async function refreshAllChannelEmotes() {
     where: { botEnabled: true },
     select: { id: true, login: true, twitchId: true },
   });
+
   for (const channel of activeChannels) {
-    await refreshChannelEmotes(channel.login, channel.twitchId, channel.id);
+    try {
+      await refreshChannelEmotes(channel.login, channel.twitchId, channel.id);
+    } catch (err) {
+      console.error(`[emotes] refresh failed for #${channel.login}:`, err);
+    }
+    await new Promise((r) => setTimeout(r, 2000)); // 2s between channels
   }
 }
 
