@@ -16,15 +16,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const login = ((profile as any)?.login ?? user.name ?? "").toLowerCase();
 
       // Resolve their 7TV identity (may not exist — that's fine)
+      // Resolve 7TV identity and editors in one call (may not exist — that's fine)
       let sevenTvId: string | null = null;
+      let editors: { id: string; permissions: number; added_at: number }[] = [];
+      let sevenTvOk = false;
+
       try {
         const res = await fetch(`https://7tv.io/v3/users/twitch/${account.providerAccountId}`);
         if (res.ok) {
           const data = await res.json();
           sevenTvId = data.user?.id ?? null;
+          editors = data.user?.editors ?? [];
+          sevenTvOk = true;
         }
       } catch (err) {
-        console.error("[auth] failed to resolve 7TV id:", err);
+        console.error("[auth] failed to resolve 7TV data:", err);
       }
 
       await prisma.user.upsert({
@@ -51,6 +57,44 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           },
         },
       });
+
+      // Sync this user's own channel editors
+      if (sevenTvOk) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { twitchId: account.providerAccountId },
+            include: { channel: true },
+          });
+
+          if (dbUser?.channel) {
+            for (const ed of editors) {
+              await prisma.channelEditor.upsert({
+                where: {
+                  channelId_sevenTvUserId: {
+                    channelId: dbUser.channel.id,
+                    sevenTvUserId: ed.id,
+                  },
+                },
+                update: { permissions: ed.permissions },
+                create: {
+                  channelId: dbUser.channel.id,
+                  sevenTvUserId: ed.id,
+                  permissions: ed.permissions,
+                  addedAt: new Date(ed.added_at),
+                },
+              });
+            }
+            await prisma.channelEditor.deleteMany({
+              where: {
+                channelId: dbUser.channel.id,
+                sevenTvUserId: { notIn: editors.map((e) => e.id) },
+              },
+            });
+          }
+        } catch (err) {
+          console.error("[auth] own-channel editor sync failed:", err);
+        }
+      }
 
       return true;
     },
