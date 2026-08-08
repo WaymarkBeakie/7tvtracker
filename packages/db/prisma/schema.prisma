@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  twitchId     String   @unique
+  sevenTvId    String?
+  login        String
+  displayName  String
+  accessToken  String
+  refreshToken String
+  createdAt    DateTime @default(now())
+  channel      Channel?
+}
+
+model ChannelEditor {
+  id            String   @id @default(cuid())
+  channelId     String
+  channel       Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  sevenTvUserId String
+  permissions   Int
+  addedAt       DateTime
+  syncedAt      DateTime @updatedAt
+
+  @@unique([channelId, sevenTvUserId])
+  @@index([sevenTvUserId])
+}
+
+model Channel {
+  id                String       @id @default(cuid())
+  twitchId          String       @unique
+  login             String       @unique
+  botEnabled        Boolean      @default(false)
+  sevenTvEmoteSetId String?
+  lastEmoteRefresh  DateTime?
+  ownerId           String       @unique
+  owner             User         @relation(fields: [ownerId], references: [id])
+  emotes            Emote[]
+  usages            EmoteUsage[]
+  emoteTotals       ChannelEmoteTotal[]
+  dailyUsages       EmoteUsageDaily[]
+  editors           ChannelEditor[]
+}
+
+model Emote {
+  id          String              @id @default(cuid())
+  sevenTvId   String              @unique
+  name        String
+  channelId   String?
+  channel     Channel?            @relation(fields: [channelId], references: [id])
+  usages      EmoteUsage[]
+  totals      ChannelEmoteTotal[]
+  dailyUsages EmoteUsageDaily[]
+}
+
+model EmoteUsage {
+  id              String   @id @default(cuid())
+  channelId       String
+  channel         Channel  @relation(fields: [channelId], references: [id])
+  chatterTwitchId String
+  chatterUsername String
+  emoteId         String
+  emote           Emote    @relation(fields: [emoteId], references: [id], onDelete: Cascade)
+  usedAt          DateTime @default(now())
+
+  @@index([channelId, usedAt])
+  @@index([channelId, emoteId])
+}
+
+model EmoteUsageDaily {
+  id              String   @id @default(cuid())
+  channelId       String
+  channel         Channel  @relation(fields: [channelId], references: [id])
+  emoteId         String
+  emote           Emote    @relation(fields: [emoteId], references: [id], onDelete: Cascade)
+  chatterUsername String
+  date            DateTime
+  count           Int      @default(0)
+
+  @@unique([channelId, emoteId, chatterUsername, date])
+  @@index([channelId, date])
+  @@index([channelId, emoteId, date])
+}
+
+model ChannelEmoteTotal {
+  channelId String
+  emoteId   String
+  channel   Channel  @relation(fields: [channelId], references: [id])
+  emote     Emote    @relation(fields: [emoteId], references: [id], onDelete: Cascade)
+  count     Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@id([channelId, emoteId])
+}
+
+model BotCredential {
+  id           String   @id @default("bot") // singleton row, one bot account
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  updatedAt    DateTime @updatedAt
+}
