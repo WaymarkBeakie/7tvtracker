@@ -7,21 +7,21 @@ async function runRollup() {
 
   console.log(`[rollup] rolling up EmoteUsage older than ${cutoff.toISOString()}`);
 
-  const staleRows = await prisma.emoteUsage.findMany({
+const staleRows = await prisma.emoteUsage.findMany({
     where: { usedAt: { lt: cutoff } },
-    select: { id: true, channelId: true, emoteId: true, chatterUsername: true, usedAt: true },
+    select: { id: true, channelId: true, emoteId: true, usedAt: true },
   });
 
   console.log(`[rollup] found ${staleRows.length} rows to roll up`);
   if (staleRows.length === 0) return;
 
-  type Bucket = { channelId: string; emoteId: string; chatterUsername: string; date: Date; count: number };
+  type Bucket = { channelId: string; emoteId: string; date: Date; count: number };
   const buckets = new Map<string, Bucket>();
 
   for (const row of staleRows) {
     const dayStart = new Date(row.usedAt);
     dayStart.setHours(0, 0, 0, 0);
-    const key = `${row.channelId}|${row.emoteId}|${row.chatterUsername}|${dayStart.toISOString()}`;
+    const key = `${row.channelId}|${row.emoteId}|${dayStart.toISOString()}`;
     const existing = buckets.get(key);
     if (existing) {
       existing.count += 1;
@@ -29,7 +29,6 @@ async function runRollup() {
       buckets.set(key, {
         channelId: row.channelId,
         emoteId: row.emoteId,
-        chatterUsername: row.chatterUsername,
         date: dayStart,
         count: 1,
       });
@@ -39,10 +38,9 @@ async function runRollup() {
   for (const bucket of buckets.values()) {
     await prisma.emoteUsageDaily.upsert({
       where: {
-        channelId_emoteId_chatterUsername_date: {
+        channelId_emoteId_date: {
           channelId: bucket.channelId,
           emoteId: bucket.emoteId,
-          chatterUsername: bucket.chatterUsername,
           date: bucket.date,
         },
       },

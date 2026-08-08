@@ -4,18 +4,6 @@ import { prisma } from "@emotetracker/db";
 import { revalidatePath } from "next/cache";
 import { resolveChannelAccess } from "@/lib/channel-access";
 
-export async function toggleBot(enabled: boolean, channelLogin?: string) {
-  const access = await resolveChannelAccess(channelLogin);
-  if (!access) throw new Error("Not authorized");
-
-  await prisma.channel.update({
-    where: { id: access.channel.id },
-    data: { botEnabled: enabled },
-  });
-
-  revalidatePath(channelLogin ? `/dashboard/${channelLogin}` : "/dashboard");
-}
-
 export async function getEmoteStats(emoteId: string, days = 14, channelLogin?: string) {
   const access = await resolveChannelAccess(channelLogin);
   if (!access) throw new Error("Not authorized");
@@ -35,7 +23,7 @@ export async function getEmoteStats(emoteId: string, days = 14, channelLogin?: s
     }),
     prisma.emoteUsage.findMany({
       where: { channelId, emoteId, usedAt: { gte: todayStart } },
-      select: { usedAt: true, chatterUsername: true },
+      select: { usedAt: true },
     }),
   ]);
 
@@ -53,24 +41,13 @@ export async function getEmoteStats(emoteId: string, days = 14, channelLogin?: s
     const key = row.usedAt.toISOString().slice(0, 10);
     if (dayBuckets.has(key)) dayBuckets.set(key, (dayBuckets.get(key) ?? 0) + 1);
   }
+
   const dailyUsage = Array.from(dayBuckets.entries()).map(([date, count]) => ({
     date: date.slice(5),
     count,
   }));
 
-  const chatterCounts = new Map<string, number>();
-  for (const row of rollupRows) {
-    chatterCounts.set(row.chatterUsername, (chatterCounts.get(row.chatterUsername) ?? 0) + row.count);
-  }
-  for (const row of rawRows) {
-    chatterCounts.set(row.chatterUsername, (chatterCounts.get(row.chatterUsername) ?? 0) + 1);
-  }
-  const topChatters = Array.from(chatterCounts.entries())
-    .map(([username, count]) => ({ username, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 10);
-
-  return { dailyUsage, topChatters };
+  return { dailyUsage };
 }
 
 export async function refreshEmotes(channelLogin?: string) {

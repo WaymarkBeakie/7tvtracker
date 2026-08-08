@@ -60,30 +60,27 @@ model Emote {
 }
 
 model EmoteUsage {
-  id              String   @id @default(cuid())
-  channelId       String
-  channel         Channel  @relation(fields: [channelId], references: [id])
-  chatterTwitchId String
-  chatterUsername String
-  emoteId         String
-  emote           Emote    @relation(fields: [emoteId], references: [id], onDelete: Cascade)
-  usedAt          DateTime @default(now())
+  id        String   @id @default(cuid())
+  channelId String
+  channel   Channel  @relation(fields: [channelId], references: [id])
+  emoteId   String
+  emote     Emote    @relation(fields: [emoteId], references: [id], onDelete: Cascade)
+  usedAt    DateTime @default(now())
 
   @@index([channelId, usedAt])
   @@index([channelId, emoteId])
 }
 
 model EmoteUsageDaily {
-  id              String   @id @default(cuid())
-  channelId       String
-  channel         Channel  @relation(fields: [channelId], references: [id])
-  emoteId         String
-  emote           Emote    @relation(fields: [emoteId], references: [id], onDelete: Cascade)
-  chatterUsername String
-  date            DateTime
-  count           Int      @default(0)
+  id        String   @id @default(cuid())
+  channelId String
+  channel   Channel  @relation(fields: [channelId], references: [id])
+  emoteId   String
+  emote     Emote    @relation(fields: [emoteId], references: [id], onDelete: Cascade)
+  date      DateTime
+  count     Int      @default(0)
 
-  @@unique([channelId, emoteId, chatterUsername, date])
+  @@unique([channelId, emoteId, date])
   @@index([channelId, date])
   @@index([channelId, emoteId, date])
 }

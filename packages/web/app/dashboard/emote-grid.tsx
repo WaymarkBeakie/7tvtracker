@@ -10,7 +10,6 @@ import { ResetButton } from "./reset-button";
 type EmoteSummary = { id: string; name: string; sevenTvId: string; count: number };
 type EmoteStats = {
   dailyUsage: { date: string; count: number }[];
-  topChatters: { username: string; count: number }[];
 };
 
 const DAY_OPTIONS = [7, 14, 30, 90];
@@ -218,33 +217,12 @@ export function EmoteGrid({
             {isPending || !stats ? (
               <p className="text-sm text-neutral-500">Loading…</p>
             ) : (
-              <>
-                <section className="mb-6">
-                  <h4 className="mb-3 text-sm font-medium text-neutral-400">
-                    Usage (last {days} days)
-                  </h4>
-                  <UsageChart data={stats.dailyUsage} />
-                </section>
-
-                <section>
-                  <h4 className="mb-3 text-sm font-medium text-neutral-400">Top Chatters</h4>
-                  {stats.topChatters.length === 0 ? (
-                    <p className="text-sm text-neutral-500">No usage in this period.</p>
-                  ) : (
-                    <ol className="space-y-2">
-                      {stats.topChatters.map((c, i) => (
-                        <li key={c.username} className="flex items-center justify-between text-sm">
-                          <span className="text-neutral-300">
-                            <span className="mr-2 text-neutral-600">{i + 1}.</span>
-                            {c.username}
-                          </span>
-                          <span className="font-mono text-neutral-400">{c.count}</span>
-                        </li>
-                      ))}
-                    </ol>
-                  )}
-                </section>
-              </>
+              <section>
+                <h4 className="mb-3 text-sm font-medium text-neutral-400">
+                  Usage (last {days} days)
+                </h4>
+                <UsageChart data={stats.dailyUsage} />
+              </section>
             )}
           </div>
         </div>
