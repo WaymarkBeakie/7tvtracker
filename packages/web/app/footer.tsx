@@ -8,10 +8,10 @@ export function Footer() {
           Not affiliated with Twitch or 7TV.
         </p>
         <div className="flex items-center gap-4">
-          <Link href="/terms" className="hover:text-neutral-400">
+          <Link href="/terms" className="text-emerald-400 hover:text-emerald-400/80">
             Terms
           </Link>
-          <Link href="/privacy" className="hover:text-neutral-400">
+          <Link href="/privacy" className="text-emerald-400 hover:text-emerald-400/80">
             Privacy
           </Link>
         </div>

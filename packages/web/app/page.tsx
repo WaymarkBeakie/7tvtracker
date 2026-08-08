@@ -8,8 +8,7 @@ export default async function HomePage() {
   }
 
   return (
-    <main className="flex min-h-[calc(100vh-73px)] flex-col items-center justify-center px-6 text-center text-white">
-      <h1 className="text-3xl font-semibold tracking-tight">7TV Emote Tracker</h1>
+    <main className="flex h-full flex-col items-center justify-center px-6 py-20 text-center text-white">      <h1 className="text-3xl font-semibold tracking-tight">7TV Emote Tracker</h1>
       <p className="mt-3 max-w-md text-neutral-400">
         See which 7TV emotes your chat actually uses, and how often. Sign in with Twitch to get
         started.

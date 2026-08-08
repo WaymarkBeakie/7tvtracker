@@ -24,7 +24,7 @@ export async function DashboardView({
   }));
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-white px-6 py-10">
+    <main className="bg-neutral-950 text-white px-6 py-10">
       <div className="mx-auto max-w-5xl space-y-8">
         <header>
           <h1 className="text-2xl font-semibold tracking-tight">
