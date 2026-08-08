@@ -52,15 +52,19 @@ function attachHandlers(c: tmi.Client) {
     const cleanMessage = message.replace(/[\u034F\u200B-\u200D\uFEFF]/g, "");
     const words = cleanMessage.split(/\s+/);
 
+    const matches: { word: string; emoteId: string }[] = [];
     for (const word of words) {
       const emoteId = resolveEmoteId(channelLogin, word);
-      if (emoteId) {
+      if (emoteId) matches.push({ word, emoteId });
+    }
+    if (matches.length === 0) return;
+
+    for (const { emoteId } of matches) {
+      try {
         await prisma.$transaction([
           prisma.emoteUsage.create({
             data: {
               channelId: dbChannel.id,
-              chatterTwitchId: tags["user-id"] ?? "unknown",
-              chatterUsername: tags["display-name"] ?? tags.username ?? "unknown",
               emoteId,
             },
           }),
@@ -70,7 +74,8 @@ function attachHandlers(c: tmi.Client) {
             create: { channelId: dbChannel.id, emoteId, count: 1 },
           }),
         ]);
-        console.log(`[emote] ${tags["display-name"]} used ${word} in #${channelLogin}`);
+      } catch (err) {
+        console.error("[bot] failed to record emote usage:", err);
       }
     }
   });
