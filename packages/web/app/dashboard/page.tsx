@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { redirect } from "next/navigation";
 import { resolveChannelAccess } from "@/lib/channel-access";
 import { DashboardView } from "./dashboard-view";

@@ -127,6 +127,7 @@ async function syncChannels() {
         await client.join(login);
         joinedChannels.add(login);
         channelCache.set(login, { id: channel.id, twitchId: channel.twitchId });
+        await prisma.botHeartbeat.create({ data: { channelId: channel.id } });
         const emoteSetId = await refreshChannelEmotes(login, channel.twitchId, channel.id);
         if (emoteSetId) {
           setIdToChannel.set(emoteSetId, { login, twitchId: channel.twitchId, dbId: channel.id });

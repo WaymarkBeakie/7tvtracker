@@ -1,3 +1,8 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
 type Status = "online" | "offline" | "unknown" | "disabled";
 
 function getStatus(botEnabled: boolean, lastSeen: Date | null): Status {
@@ -59,6 +64,14 @@ export function BotStatus({
   uptime: { hour: number; pct: number }[];
   toggle?: React.ReactNode;
 }) {
+
+  const router = useRouter();
+
+  useEffect(() => {
+    const id = setInterval(() => router.refresh(), 60_000);
+    return () => clearInterval(id);
+  }, [router]);
+  
   const status = getStatus(botEnabled, lastSeen);
   const meta = STATUS_META[status];
 
