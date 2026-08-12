@@ -6,10 +6,19 @@ import { getEmoteStats } from "../actions";
 import { UsageChart } from "./usage-chart";
 import { RefreshButton } from "./refresh-button";
 import { ResetButton } from "./reset-button";
+import { HourChart } from "./hour-chart";
 
-type EmoteSummary = { id: string; name: string; sevenTvId: string; count: number };
+type EmoteSummary = {
+  id: string;
+  name: string;
+  sevenTvId: string;
+  count: number;
+  lastUsed: string | null;
+};
+
 type EmoteStats = {
   dailyUsage: { date: string; count: number }[];
+  hourlyUsage: { hour: string; count: number }[];
 };
 
 const DAY_OPTIONS = [7, 14, 30, 90];
@@ -32,6 +41,7 @@ export function EmoteGrid({
 }) {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("most");
+  const [unusedDays, setUnusedDays] = useState(0); // 0 = off
   const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
 
   const [selected, setSelected] = useState<EmoteSummary | null>(null);
@@ -44,21 +54,29 @@ export function EmoteGrid({
 
   const filteredEmotes = useMemo(() => {
     let result = emotes;
+
+    if (unusedDays > 0) {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - unusedDays);
+      cutoff.setHours(0, 0, 0, 0);
+      result = result.filter((e) => !e.lastUsed || new Date(e.lastUsed) < cutoff);
+    }
+
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       result = result.filter((e) => e.name.toLowerCase().includes(q));
     }
+
     return [...result].sort((a, b) => {
       if (sort === "most") return b.count - a.count;
       if (sort === "least") return a.count - b.count;
       return a.name.localeCompare(b.name);
     });
-  }, [emotes, search, sort]);
+  }, [emotes, search, sort, unusedDays]);
 
-  // Reset scroll window when the filtered set changes
   useEffect(() => {
     setVisibleCount(BATCH_SIZE);
-  }, [search, sort]);
+  }, [search, sort, unusedDays]);
 
   const visibleEmotes = filteredEmotes.slice(0, visibleCount);
   const hasMore = visibleCount < filteredEmotes.length;
@@ -131,11 +149,22 @@ export function EmoteGrid({
             <option value="least">Least used</option>
             <option value="az">A–Z</option>
           </select>
+
+          <select
+            value={unusedDays}
+            onChange={(e) => setUnusedDays(Number(e.target.value))}
+            className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 focus:border-emerald-500/50 focus:outline-none"
+          >
+            <option value={0}>All emotes</option>
+            <option value={7}>Unused 7+ days</option>
+            <option value={30}>Unused 30+ days</option>
+            <option value={90}>Unused 90+ days</option>
+          </select>
         </div>
       </div>
 
       {visibleEmotes.length === 0 ? (
-        <p className="text-sm text-neutral-500">No emotes match your search.</p>
+        <p className="text-sm text-neutral-500">No emotes match your filters.</p>
       ) : (
         <div
           ref={scrollContainerRef}
@@ -179,7 +208,7 @@ export function EmoteGrid({
           onClick={() => setSelected(null)}
         >
           <div
-            className="h-full w-full max-w-md overflow-y-auto border-l border-neutral-800 bg-neutral-950 p-6"
+            className="emote-scroll h-full w-full max-w-md overflow-y-auto border-l border-neutral-800 bg-neutral-950 p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-6 flex items-center justify-between">
@@ -195,8 +224,8 @@ export function EmoteGrid({
                 <div>
                   <h3 className="font-medium">{selected.name}</h3>
                   <p className="text-xs text-neutral-500">{selected.count} total uses</p>
-                  <a
-                    href={`https://7tv.app/emotes/${selected.sevenTvId}`}
+                  
+                  <a href={`https://7tv.app/emotes/${selected.sevenTvId}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-1 inline-block text-xs text-emerald-400 hover:text-emerald-300"
@@ -232,12 +261,20 @@ export function EmoteGrid({
             {isPending || !stats ? (
               <p className="text-sm text-neutral-500">Loading…</p>
             ) : (
-              <section>
-                <h4 className="mb-3 text-sm font-medium text-neutral-400">
-                  Usage (last {days} days)
-                </h4>
-                <UsageChart data={stats.dailyUsage} />
-              </section>
+              <>
+                <section>
+                  <h4 className="mb-3 text-sm font-medium text-neutral-400">
+                    Usage (last {days} days)
+                  </h4>
+                  <UsageChart data={stats.dailyUsage} />
+                </section>
+                <section className="mt-6">
+                  <h4 className="mb-3 text-sm font-medium text-neutral-400">
+                    Time of day (UTC)
+                  </h4>
+                  <HourChart data={stats.hourlyUsage} />
+                </section>
+              </>
             )}
           </div>
         </div>

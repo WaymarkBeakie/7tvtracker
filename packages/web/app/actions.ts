@@ -45,13 +45,21 @@ export async function getEmoteStats(emoteId: string, days = 14, channelLogin?: s
     d.setDate(d.getDate() - i);
     dayBuckets.set(d.toISOString().slice(0, 10), 0);
   }
+
+  const hourCounts = new Array(24).fill(0);
+
   for (const row of rollupRows) {
     const key = row.date.toISOString().slice(0, 10);
     if (dayBuckets.has(key)) dayBuckets.set(key, (dayBuckets.get(key) ?? 0) + row.count);
+    for (let h = 0; h < 24; h++) {
+      hourCounts[h] += row.hourCounts[h] ?? 0;
+    }
   }
+
   for (const row of rawRows) {
     const key = row.usedAt.toISOString().slice(0, 10);
     if (dayBuckets.has(key)) dayBuckets.set(key, (dayBuckets.get(key) ?? 0) + 1);
+    hourCounts[row.usedAt.getHours()] += 1;
   }
 
   const dailyUsage = Array.from(dayBuckets.entries()).map(([date, count]) => ({
@@ -59,7 +67,12 @@ export async function getEmoteStats(emoteId: string, days = 14, channelLogin?: s
     count,
   }));
 
-  return { dailyUsage };
+  const hourlyUsage = hourCounts.map((count, hour) => ({
+    hour: `${String(hour).padStart(2, "0")}`,
+    count,
+  }));
+
+  return { dailyUsage, hourlyUsage };
 }
 
 export async function refreshEmotes(channelLogin?: string) {
