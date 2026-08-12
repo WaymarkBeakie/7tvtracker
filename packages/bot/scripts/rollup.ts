@@ -95,6 +95,17 @@ async function purgeOldData() {
   if (deleted.count > 0) {
     console.log(`[purge] deleted ${deleted.count} daily record(s) older than ${RETENTION_DAYS} days`);
   }
+
+  const heartbeatCutoff = new Date();
+  heartbeatCutoff.setDate(heartbeatCutoff.getDate() - 30);
+
+  const hbDeleted = await prisma.botHeartbeat.deleteMany({
+    where: { at: { lt: heartbeatCutoff } },
+  });
+
+  if (hbDeleted.count > 0) {
+    console.log(`[purge] deleted ${hbDeleted.count} heartbeat(s) older than 30 days`);
+  }
 }
 
 runRollup()

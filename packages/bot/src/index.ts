@@ -9,6 +9,9 @@ import { SevenTvEventClient } from "./eventapi";
 // Maps 7TV emote set ID -> the channel it belongs to
 const setIdToChannel = new Map<string, { login: string; twitchId: string; dbId: string }>();
 
+// Maps channel login (lowercase) -> DB ids, so the message handler never queries
+const channelCache = new Map<string, { id: string; twitchId: string }>();
+
 const pendingRefreshes = new Map<string, NodeJS.Timeout>();
 
 const eventClient = new SevenTvEventClient(async (emoteSetId) => {
@@ -35,6 +38,7 @@ const eventClient = new SevenTvEventClient(async (emoteSetId) => {
 const POLL_INTERVAL_MS = 30_000;
 const EMOTE_REFRESH_INTERVAL_MS = 6 * 60 * 60_000; // 6 hours
 const TOKEN_CHECK_INTERVAL_MS = 60_000; // check every minute, refresh only when close to expiry
+const HEARTBEAT_INTERVAL_MS = 5 * 60_000;
 
 let client: tmi.Client;
 let joinedChannels = new Set<string>();
@@ -51,6 +55,20 @@ async function createClient() {
   });
 }
 
+async function writeHeartbeats() {
+  try {
+    const now = new Date();
+    const rows = Array.from(channelCache.values()).map((c) => ({
+      channelId: c.id,
+      at: now,
+    }));
+    if (rows.length === 0) return;
+    await prisma.botHeartbeat.createMany({ data: rows });
+  } catch (err) {
+    console.error("[bot] heartbeat write failed:", err);
+  }
+}
+
 function attachHandlers(c: tmi.Client) {
   c.on("connected", () => {
     console.log("[bot] connected to Twitch IRC");
@@ -60,9 +78,7 @@ function attachHandlers(c: tmi.Client) {
     if (self) return;
 
     const channelLogin = channel.replace("#", "").toLowerCase();
-    const dbChannel = await prisma.channel.findFirst({
-      where: { login: { equals: channelLogin, mode: "insensitive" } },
-    });
+    const dbChannel = channelCache.get(channelLogin);
     if (!dbChannel) return;
 
     const cleanMessage = message.replace(/[\u034F\u200B-\u200D\uFEFF]/g, "");
@@ -110,6 +126,7 @@ async function syncChannels() {
       try {
         await client.join(login);
         joinedChannels.add(login);
+        channelCache.set(login, { id: channel.id, twitchId: channel.twitchId });
         const emoteSetId = await refreshChannelEmotes(login, channel.twitchId, channel.id);
         if (emoteSetId) {
           setIdToChannel.set(emoteSetId, { login, twitchId: channel.twitchId, dbId: channel.id });
@@ -127,6 +144,7 @@ async function syncChannels() {
       try {
         await client.part(login);
         joinedChannels.delete(login);
+        channelCache.delete(login);
         // Drop any event subscription tied to this channel
         for (const [setId, ch] of setIdToChannel) {
           if (ch.login === login) {
@@ -184,7 +202,7 @@ async function checkTokenAndMaybeReconnect() {
   try {
     const cred = await prisma.botCredential.findUnique({ where: { id: "bot" } });
     if (!cred) {
-      console.log("[debug] no credential found, skipping");
+      console.log("[bot] no credential found, skipping token check");
       return;
     }
 
@@ -211,6 +229,8 @@ async function main() {
   setInterval(syncChannels, POLL_INTERVAL_MS);
   setInterval(refreshAllChannelEmotes, EMOTE_REFRESH_INTERVAL_MS);
   setInterval(checkTokenAndMaybeReconnect, TOKEN_CHECK_INTERVAL_MS);
+  setInterval(writeHeartbeats, HEARTBEAT_INTERVAL_MS);
+  await writeHeartbeats(); // one immediately on startup
 }
 
 main().catch((err) => {

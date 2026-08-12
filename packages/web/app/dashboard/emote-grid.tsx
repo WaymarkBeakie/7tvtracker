@@ -5,7 +5,7 @@ import Image from "next/image";
 import { getEmoteStats } from "../actions";
 import { UsageChart } from "./usage-chart";
 import { RefreshButton } from "./refresh-button";
-import { ResetButton } from "./reset-button";
+import { EmoteContextMenu, type ContextMenuState } from "./emote-context-menu";
 import { HourChart } from "./hour-chart";
 
 type EmoteSummary = {
@@ -55,6 +55,8 @@ export function EmoteGrid({
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
 
   const filteredEmotes = useMemo(() => {
     let result = emotes;
@@ -148,7 +150,7 @@ export function EmoteGrid({
   }
 
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <input
           type="text"
@@ -158,10 +160,9 @@ export function EmoteGrid({
           className="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-emerald-500/50 focus:outline-none sm:w-64"
         />
         <RefreshButton channelLogin={channelLogin} />
-        {isOwner && <ResetButton channelLogin={channelLogin} />}
 
         <div className="flex items-center gap-3">
-          <span className="text-xs text-neutral-500">
+          <span className="text-xs text-emerald-400/80">
             {filteredEmotes.length} emote{filteredEmotes.length === 1 ? "" : "s"}
           </span>
           <select
@@ -199,6 +200,14 @@ export function EmoteGrid({
               <button
                 key={emote.id}
                 onClick={() => selectEmote(emote)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setContextMenu({
+                    x: e.clientX,
+                    y: e.clientY,
+                    emote: { id: emote.id, name: emote.name, sevenTvId: emote.sevenTvId },
+                  });
+                }}
                 className="flex flex-col items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-900 p-4 transition-colors hover:border-emerald-500/50 hover:bg-neutral-800"
               >
                 <Image
@@ -303,6 +312,15 @@ export function EmoteGrid({
           </div>
         </div>
       )}
-    </>
+
+      <EmoteContextMenu
+        state={contextMenu}
+        onClose={() => setContextMenu(null)}
+        onOpenPanel={(id) => {
+          const emote = emotes.find((e) => e.id === id);
+          if (emote) selectEmote(emote);
+        }}
+      />
+    </div>
   );
 }

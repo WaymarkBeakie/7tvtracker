@@ -56,36 +56,56 @@ export async function DashboardView({
     select: { lastEmoteRefresh: true },
   });
 
+  const dayAgo = new Date(Date.now() - 24 * 3_600_000);
+
+  const heartbeats = await prisma.botHeartbeat.findMany({
+    where: { channelId, at: { gte: dayAgo } },
+    select: { at: true },
+    orderBy: { at: "asc" },
+  });
+
+  const EXPECTED_PER_HOUR = 12; // heartbeat every 5 minutes
+  const uptimeBuckets = Array.from({ length: 24 }, (_, i) => {
+    const slotStart = new Date(Date.now() - (23 - i) * 3_600_000);
+    slotStart.setMinutes(0, 0, 0);
+    const slotEnd = new Date(slotStart.getTime() + 3_600_000);
+
+    const seen = heartbeats.filter((h) => h.at >= slotStart && h.at < slotEnd).length;
+
+    return {
+      hour: slotStart.getUTCHours(),
+      pct: Math.min(100, Math.round((seen / EXPECTED_PER_HOUR) * 100)),
+    };
+  });
+
+  const lastHeartbeat = heartbeats.length > 0 ? heartbeats[heartbeats.length - 1].at : null;
+
   return (
-    <main className="bg-neutral-950 text-white px-6 py-10">
-      <div className="mx-auto max-w-5xl space-y-8">
+    <main className="flex min-h-0 flex-1 flex-col bg-neutral-950 px-6 py-6 text-white">
+      <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-6">
         <header>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            #{access.channel.login}
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight">#{access.channel.login}</h1>
           <p className="mt-1 text-sm text-neutral-400">
             {access.isOwner ? "Your channel" : "You have editor access to this channel"}
           </p>
         </header>
 
         <section className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
-          <div className="flex items-start justify-between gap-6">
-            <div className="min-w-0 flex-1">
-              <h2 className="mb-3 font-medium">Emote Tracking Bot</h2>
-              <BotStatus
-                botEnabled={access.channel.botEnabled}
-                lastRefresh={channelMeta?.lastEmoteRefresh ?? null}
-                emoteCount={emotes.length}
-              />
-            </div>
-            {access.isOwner && (
-              <BotToggle enabled={access.channel.botEnabled} channelLogin={channelLogin} />
-            )}
-          </div>
+          <h2 className="mb-3 font-medium">Emote Tracking Bot</h2>
+          <BotStatus
+            botEnabled={access.channel.botEnabled}
+            lastSeen={lastHeartbeat}
+            uptime={uptimeBuckets}
+            toggle={
+              access.isOwner ? (
+                <BotToggle enabled={access.channel.botEnabled} channelLogin={channelLogin} />
+              ) : null
+            }
+          />
         </section>
 
-        <section>
-          <h2 className="mb-4 font-medium">Emotes</h2>
+        <section className="flex min-h-0 flex-1 flex-col">
+          <h2 className="mb-4 font-medium">{emotes.length} Emotes</h2>
           {emotes.length === 0 ? (
             <p className="text-sm text-neutral-500">No emotes found for this channel.</p>
           ) : (

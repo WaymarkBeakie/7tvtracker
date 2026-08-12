@@ -1,29 +1,28 @@
-type Status = "healthy" | "stale" | "unknown" | "disabled";
+type Status = "online" | "offline" | "unknown" | "disabled";
 
-function getStatus(botEnabled: boolean, lastRefresh: Date | null): Status {
+function getStatus(botEnabled: boolean, lastSeen: Date | null): Status {
   if (!botEnabled) return "disabled";
-  if (!lastRefresh) return "unknown";
-
-  const hoursSince = (Date.now() - lastRefresh.getTime()) / 3_600_000;
-  // The bot refreshes every 6h, so anything under ~8h is expected
-  return hoursSince < 8 ? "healthy" : "stale";
+  if (!lastSeen) return "unknown";
+  const minsSince = (Date.now() - lastSeen.getTime()) / 60_000;
+  // Heartbeat is every 5 minutes, so 12 allows for a couple of misses
+  return minsSince < 12 ? "online" : "offline";
 }
 
 const STATUS_META: Record<Status, { dot: string; label: string; note: string }> = {
-  healthy: {
+  online: {
     dot: "bg-emerald-400",
-    label: "Active",
+    label: "Online",
     note: "Tracking emote usage in this chat.",
   },
-  stale: {
-    dot: "bg-amber-400",
-    label: "Not syncing",
-    note: "The bot hasn't synced emotes recently. It may be offline.",
+  offline: {
+    dot: "bg-red-400",
+    label: "Offline",
+    note: "The bot hasn't checked in recently.",
   },
   unknown: {
     dot: "bg-neutral-500",
     label: "Waiting",
-    note: "Enabled, but hasn't synced yet.",
+    note: "Enabled, but hasn't connected yet.",
   },
   disabled: {
     dot: "bg-neutral-600",
@@ -42,42 +41,77 @@ function formatRelative(date: Date | null) {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
+function barColor(pct: number, tracked: boolean) {
+  if (pct >= 90) return "bg-emerald-500/70";
+  if (pct >= 50) return "bg-amber-500/70";
+  if (pct > 0) return "bg-red-500/70";
+  return "bg-neutral-800";
+}
+
 export function BotStatus({
   botEnabled,
-  lastRefresh,
-  emoteCount,
+  lastSeen,
+  uptime,
+  toggle
 }: {
   botEnabled: boolean;
-  lastRefresh: Date | null;
-  emoteCount: number;
+  lastSeen: Date | null;
+  uptime: { hour: number; pct: number }[];
+  toggle?: React.ReactNode;
 }) {
-  const status = getStatus(botEnabled, lastRefresh);
+  const status = getStatus(botEnabled, lastSeen);
   const meta = STATUS_META[status];
 
+  // Only average from the first hour we ever saw a heartbeat
+  const firstActiveIndex = uptime.findIndex((u) => u.pct > 0);
+  const measured = firstActiveIndex === -1 ? [] : uptime.slice(firstActiveIndex);
+  const avg =
+    measured.length > 0
+      ? Math.round(measured.reduce((sum, u) => sum + u.pct, 0) / measured.length)
+      : 0;
+
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <span className="relative flex h-2.5 w-2.5">
-          {status === "healthy" && (
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-          )}
-          <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${meta.dot}`} />
-        </span>
-        <span className="text-sm font-medium">{meta.label}</span>
+    <div className="space-y-4">
+      
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-2.5 w-2.5">
+            {status === "online" && (
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+            )}
+            <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${meta.dot}`} />
+          </span>
+          <span className="text-sm font-medium">{meta.label}</span>
+          <span className="text-xs text-neutral-500">· {formatRelative(lastSeen)}</span>
+        </div>
+        {toggle}
       </div>
 
       <p className="text-sm text-neutral-400">{meta.note}</p>
 
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
-        <div className="flex justify-between">
-          <dt className="text-neutral-500">Tracked emotes</dt>
-          <dd className="font-mono text-neutral-300">{emoteCount}</dd>
+      <div>
+        <div className="mb-1.5 flex items-baseline justify-between">
+          <span className="text-xs text-neutral-500">Last 24 hours</span>
+          <span className="font-mono text-xs text-neutral-400">{avg}% uptime</span>
         </div>
-        <div className="flex justify-between">
-          <dt className="text-neutral-500">Last sync</dt>
-          <dd className="text-neutral-300">{formatRelative(lastRefresh)}</dd>
+        <div className="flex h-8 items-end gap-[2px]">
+          {uptime.map((u, i) => {
+            const tracked = firstActiveIndex !== -1 && i >= firstActiveIndex;
+            return (
+              <div
+                key={i}
+                title={
+                  tracked
+                    ? `${String(u.hour).padStart(2, "0")}:00 UTC — ${u.pct}%`
+                    : "No data"
+                }
+                className={`flex-1 rounded-sm ${barColor(u.pct, tracked)}`}
+                style={{ height: `${Math.max(8, u.pct)}%` }}
+              />
+            );
+          })}
         </div>
-      </dl>
+      </div>
     </div>
   );
 }

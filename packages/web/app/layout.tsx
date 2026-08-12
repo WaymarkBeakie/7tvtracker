@@ -26,11 +26,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://cdn.7tv.app" />
         <link rel="dns-prefetch" href="https://cdn.7tv.app" />
       </head>
-      <body className="flex min-h-screen flex-col bg-neutral-950">
-        <Navbar />
-        <div className="flex flex-1 flex-col">{children}</div>
-        <Footer />
-      </body>
+    <body className="flex h-screen flex-col overflow-hidden bg-neutral-950">
+      <Navbar />
+      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+      <Footer />
+    </body>
     </html>
   );
 };

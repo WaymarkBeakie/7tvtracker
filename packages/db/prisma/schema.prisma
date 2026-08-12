@@ -46,7 +46,8 @@ model Channel {
   emoteTotals       ChannelEmoteTotal[]
   dailyUsages       EmoteUsageDaily[]
   editors           ChannelEditor[]
-  timezone String @default("UTC")
+  timezone String   @default("UTC")
+  heartbeats        BotHeartbeat[]
 }
 
 model Emote {
@@ -104,4 +105,13 @@ model BotCredential {
   refreshToken String
   expiresAt    DateTime
   updatedAt    DateTime @updatedAt
+}
+
+model BotHeartbeat {
+  id        String   @id @default(cuid())
+  channelId String
+  channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  at        DateTime @default(now())
+
+  @@index([channelId, at])
 }
