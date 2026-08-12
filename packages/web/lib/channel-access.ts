@@ -7,6 +7,7 @@ export type ChannelAccess = {
     login: string;
     twitchId: string;
     botEnabled: boolean;
+    timezone: string;
   };
   isOwner: boolean;
 };

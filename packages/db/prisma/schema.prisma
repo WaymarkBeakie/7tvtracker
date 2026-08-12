@@ -46,6 +46,7 @@ model Channel {
   emoteTotals       ChannelEmoteTotal[]
   dailyUsages       EmoteUsageDaily[]
   editors           ChannelEditor[]
+  timezone String @default("UTC")
 }
 
 model Emote {
@@ -72,13 +73,14 @@ model EmoteUsage {
 }
 
 model EmoteUsageDaily {
-  id        String   @id @default(cuid())
-  channelId String
-  channel   Channel  @relation(fields: [channelId], references: [id])
-  emoteId   String
-  emote     Emote    @relation(fields: [emoteId], references: [id], onDelete: Cascade)
-  date      DateTime
-  count     Int      @default(0)
+  id         String   @id @default(cuid())
+  channelId  String
+  channel    Channel  @relation(fields: [channelId], references: [id])
+  emoteId    String
+  emote      Emote    @relation(fields: [emoteId], references: [id], onDelete: Cascade)
+  date       DateTime
+  count      Int      @default(0)
+  hourCounts Int[]    @default([])
 
   @@unique([channelId, emoteId, date])
   @@index([channelId, date])

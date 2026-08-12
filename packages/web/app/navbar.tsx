@@ -37,6 +37,10 @@ export async function Navbar() {
               <ChannelDropdown channels={editableChannels} />
             )}
 
+            <Link href="/dashboard/settings" className="text-sm text-neutral-300 hover:text-white">
+              Settings
+            </Link>
+            
             <form
               action={async () => {
                 "use server";

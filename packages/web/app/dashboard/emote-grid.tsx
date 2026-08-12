@@ -35,9 +35,11 @@ function emoteFullUrl(sevenTvId: string) {
 export function EmoteGrid({
   emotes,
   channelLogin,
+  timezone
 }: {
   emotes: EmoteSummary[];
   channelLogin?: string;
+  timezone: string;
 }) {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("most");
@@ -73,6 +75,18 @@ export function EmoteGrid({
       return a.name.localeCompare(b.name);
     });
   }, [emotes, search, sort, unusedDays]);
+
+  const shiftedHourly = useMemo(() => {
+    if (!stats) return [];
+    const offsetHours = getTimezoneOffsetHours(timezone);
+    return stats.hourlyUsage.map((_, i) => {
+      const srcIndex = (i - offsetHours + 24 * 2) % 24;
+      return {
+        hour: String(i).padStart(2, "0"),
+        count: stats.hourlyUsage[srcIndex].count,
+      };
+    });
+  }, [stats, timezone]);
 
   useEffect(() => {
     setVisibleCount(BATCH_SIZE);
@@ -122,6 +136,13 @@ export function EmoteGrid({
       setStats(null);
       loadStats(selected.id, newDays);
     }
+  }
+
+  function getTimezoneOffsetHours(tz: string) {
+    const now = new Date();
+    const utc = new Date(now.toLocaleString("en-US", { timeZone: "UTC" }));
+    const local = new Date(now.toLocaleString("en-US", { timeZone: tz }));
+    return Math.round((local.getTime() - utc.getTime()) / 3_600_000);
   }
 
   return (
@@ -270,9 +291,9 @@ export function EmoteGrid({
                 </section>
                 <section className="mt-6">
                   <h4 className="mb-3 text-sm font-medium text-neutral-400">
-                    Time of day (UTC)
+                    Time of day ({timezone})
                   </h4>
-                  <HourChart data={stats.hourlyUsage} />
+                  <HourChart data={shiftedHourly} />
                 </section>
               </>
             )}

@@ -82,7 +82,7 @@ export async function DashboardView({
           {emotes.length === 0 ? (
             <p className="text-sm text-neutral-500">No emotes found for this channel.</p>
           ) : (
-            <EmoteGrid emotes={emotes} channelLogin={channelLogin} />
+            <EmoteGrid emotes={emotes} channelLogin={channelLogin} timezone={access.channel.timezone} />
           )}
         </section>
       </div>

@@ -15,27 +15,52 @@ const staleRows = await prisma.emoteUsage.findMany({
   console.log(`[rollup] found ${staleRows.length} rows to roll up`);
   if (staleRows.length === 0) return;
 
-  type Bucket = { channelId: string; emoteId: string; date: Date; count: number };
+  type Bucket = {
+    channelId: string;
+    emoteId: string;
+    date: Date;
+    count: number;
+    hourCounts: number[];
+  };
   const buckets = new Map<string, Bucket>();
 
   for (const row of staleRows) {
     const dayStart = new Date(row.usedAt);
     dayStart.setHours(0, 0, 0, 0);
+    const hour = row.usedAt.getHours();
     const key = `${row.channelId}|${row.emoteId}|${dayStart.toISOString()}`;
-    const existing = buckets.get(key);
-    if (existing) {
-      existing.count += 1;
-    } else {
-      buckets.set(key, {
+
+    let bucket = buckets.get(key);
+    if (!bucket) {
+      bucket = {
         channelId: row.channelId,
         emoteId: row.emoteId,
         date: dayStart,
-        count: 1,
-      });
+        count: 0,
+        hourCounts: new Array(24).fill(0),
+      };
+      buckets.set(key, bucket);
     }
+    bucket.count += 1;
+    bucket.hourCounts[hour] += 1;
   }
 
   for (const bucket of buckets.values()) {
+    const existing = await prisma.emoteUsageDaily.findUnique({
+      where: {
+        channelId_emoteId_date: {
+          channelId: bucket.channelId,
+          emoteId: bucket.emoteId,
+          date: bucket.date,
+        },
+      },
+    });
+
+    const mergedHours = new Array(24).fill(0);
+    for (let h = 0; h < 24; h++) {
+      mergedHours[h] = (existing?.hourCounts[h] ?? 0) + bucket.hourCounts[h];
+    }
+
     await prisma.emoteUsageDaily.upsert({
       where: {
         channelId_emoteId_date: {
@@ -44,8 +69,8 @@ const staleRows = await prisma.emoteUsage.findMany({
           date: bucket.date,
         },
       },
-      update: { count: { increment: bucket.count } },
-      create: bucket,
+      update: { count: { increment: bucket.count }, hourCounts: mergedHours },
+      create: { ...bucket, hourCounts: mergedHours },
     });
   }
 
