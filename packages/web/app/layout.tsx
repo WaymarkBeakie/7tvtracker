@@ -15,8 +15,32 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "7TV Emote Tracker",
-  description: "Track 7TV emote usage in your Twitch chat",
+  metadataBase: new URL("https://7tvtracker.com"),
+  title: {
+    default: "7TV Emote Tracker — See which emotes your Twitch chat actually uses",
+    template: "%s | 7TV Emote Tracker",
+  },
+  description:
+    "Free analytics for 7TV emotes in Twitch chat. Track usage counts, spot emotes nobody uses, and see when your community uses them most.",
+  keywords: ["7tv", "twitch", "emote analytics", "emote tracker", "twitch chat stats"],
+  openGraph: {
+    type: "website",
+    url: "https://7tvtracker.com",
+    siteName: "7TV Emote Tracker",
+    title: "7TV Emote Tracker",
+    description:
+      "See which 7TV emotes your Twitch chat actually uses, and how often.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "7TV Emote Tracker",
+    description:
+      "See which 7TV emotes your Twitch chat actually uses, and how often.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

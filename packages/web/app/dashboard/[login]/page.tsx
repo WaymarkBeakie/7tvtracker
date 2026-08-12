@@ -1,5 +1,9 @@
 export const dynamic = "force-dynamic";
 
+export const metadata = {
+  robots: { index: false, follow: false },
+};
+
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { resolveChannelAccess } from "@/lib/channel-access";

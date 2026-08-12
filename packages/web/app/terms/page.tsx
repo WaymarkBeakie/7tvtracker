@@ -1,3 +1,8 @@
+export const metadata = {
+  title: "Terms of Service",
+  description: "Terms of service for 7TV Emote Tracker.",
+};
+
 export default function TermsPage() {
   return (
     <main className="min-h-0 flex-1 overflow-y-auto px-6 py-12 text-neutral-300">

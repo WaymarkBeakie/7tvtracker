@@ -1,3 +1,8 @@
+export const metadata = {
+  title: "Privacy Policy",
+  description: "What data 7TV Emote Tracker collects and how long it's kept.",
+};
+
 export default function PrivacyPage() {
   return (
     <main className="min-h-0 flex-1 overflow-y-auto px-6 py-12 text-neutral-300">
