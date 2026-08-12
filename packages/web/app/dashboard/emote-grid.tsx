@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo, useEffect } from "react";
+import { useState, useTransition, useMemo, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { getEmoteStats } from "../actions";
 import { UsageChart } from "./usage-chart";
@@ -13,7 +13,7 @@ type EmoteStats = {
 };
 
 const DAY_OPTIONS = [7, 14, 30, 90];
-const PAGE_SIZE = 20;
+const BATCH_SIZE = 48;
 type SortOption = "most" | "least" | "az";
 
 function emoteThumbUrl(sevenTvId: string) {
@@ -32,12 +32,15 @@ export function EmoteGrid({
 }) {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("most");
-  const [page, setPage] = useState(1);
+  const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
 
   const [selected, setSelected] = useState<EmoteSummary | null>(null);
   const [days, setDays] = useState(14);
   const [stats, setStats] = useState<EmoteStats | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   const filteredEmotes = useMemo(() => {
     let result = emotes;
@@ -52,13 +55,34 @@ export function EmoteGrid({
     });
   }, [emotes, search, sort]);
 
-  // Reset to page 1 whenever the filtered set changes underneath the current page
+  // Reset scroll window when the filtered set changes
   useEffect(() => {
-    setPage(1);
+    setVisibleCount(BATCH_SIZE);
   }, [search, sort]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredEmotes.length / PAGE_SIZE));
-  const pageEmotes = filteredEmotes.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const visibleEmotes = filteredEmotes.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredEmotes.length;
+
+  const loadMore = useCallback(() => {
+    setVisibleCount((c) => Math.min(c + BATCH_SIZE, filteredEmotes.length));
+  }, [filteredEmotes.length]);
+
+  useEffect(() => {
+    if (!hasMore) return;
+    const el = sentinelRef.current;
+    const root = scrollContainerRef.current;
+    if (!el || !root) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) loadMore();
+      },
+      { root, rootMargin: "200px" }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, loadMore]);
 
   function loadStats(emoteId: string, rangeDays: number) {
     startTransition(async () => {
@@ -92,7 +116,7 @@ export function EmoteGrid({
           onChange={(e) => setSearch(e.target.value)}
           className="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-emerald-500/50 focus:outline-none sm:w-64"
         />
-        <RefreshButton />
+        <RefreshButton channelLogin={channelLogin} />
         <ResetButton channelLogin={channelLogin} />
         <div className="flex items-center gap-3">
           <span className="text-xs text-neutral-500">
@@ -110,52 +134,42 @@ export function EmoteGrid({
         </div>
       </div>
 
-      {pageEmotes.length === 0 ? (
+      {visibleEmotes.length === 0 ? (
         <p className="text-sm text-neutral-500">No emotes match your search.</p>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-          {pageEmotes.map((emote) => (
-            <button
-              key={emote.id}
-              onClick={() => selectEmote(emote)}
-              className="flex flex-col items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-900 p-4 transition-colors hover:border-emerald-500/50 hover:bg-neutral-800"
-            >
-              <Image
-                src={emoteThumbUrl(emote.sevenTvId)}
-                alt={emote.name}
-                width={48}
-                height={48}
-                className="h-12 w-12 object-contain"
-                loading="lazy"
-              />
-              <span className="w-full truncate text-center text-xs text-neutral-300">
-                {emote.name}
-              </span>
-              <span className="font-mono text-sm text-emerald-400">{emote.count}</span>
-            </button>
-          ))}
-        </div>
-      )}
+        <div
+          ref={scrollContainerRef}
+          className="emote-scroll max-h-[60vh] overflow-y-auto rounded-lg border border-neutral-900 p-3"
+        >
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            {visibleEmotes.map((emote) => (
+              <button
+                key={emote.id}
+                onClick={() => selectEmote(emote)}
+                className="flex flex-col items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-900 p-4 transition-colors hover:border-emerald-500/50 hover:bg-neutral-800"
+              >
+                <Image
+                  src={emoteThumbUrl(emote.sevenTvId)}
+                  alt={emote.name}
+                  width={48}
+                  height={48}
+                  className="h-12 w-12 object-contain"
+                  loading="lazy"
+                  unoptimized
+                />
+                <span className="w-full truncate text-center text-xs text-neutral-300">
+                  {emote.name}
+                </span>
+                <span className="font-mono text-sm text-emerald-400">{emote.count}</span>
+              </button>
+            ))}
+          </div>
 
-      {totalPages > 1 && (
-        <div className="mt-6 flex items-center justify-center gap-2">
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-300 disabled:opacity-40"
-          >
-            Prev
-          </button>
-          <span className="text-sm text-neutral-500">
-            Page {page} of {totalPages}
-          </span>
-          <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-300 disabled:opacity-40"
-          >
-            Next
-          </button>
+          {hasMore && (
+            <div ref={sentinelRef} className="py-6 text-center text-xs text-neutral-600">
+              Loading more…
+            </div>
+          )}
         </div>
       )}
 
@@ -176,12 +190,13 @@ export function EmoteGrid({
                   width={40}
                   height={40}
                   className="h-10 w-10 object-contain"
+                  unoptimized
                 />
                 <div>
                   <h3 className="font-medium">{selected.name}</h3>
                   <p className="text-xs text-neutral-500">{selected.count} total uses</p>
-                  
-                  <a href={`https://7tv.app/emotes/${selected.sevenTvId}`}
+                  <a
+                    href={`https://7tv.app/emotes/${selected.sevenTvId}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-1 inline-block text-xs text-emerald-400 hover:text-emerald-300"
