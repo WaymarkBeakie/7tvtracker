@@ -57,13 +57,20 @@ async function createClient() {
 
 async function writeHeartbeats() {
   try {
+    const ids = Array.from(channelCache.values()).map((c) => c.id);
+    if (ids.length === 0) return;
+
+    // A channel may have been deleted since we cached it
+    const live = await prisma.channel.findMany({
+      where: { id: { in: ids } },
+      select: { id: true },
+    });
+    if (live.length === 0) return;
+
     const now = new Date();
-    const rows = Array.from(channelCache.values()).map((c) => ({
-      channelId: c.id,
-      at: now,
-    }));
-    if (rows.length === 0) return;
-    await prisma.botHeartbeat.createMany({ data: rows });
+    await prisma.botHeartbeat.createMany({
+      data: live.map((c) => ({ channelId: c.id, at: now })),
+    });
   } catch (err) {
     console.error("[bot] heartbeat write failed:", err);
   }
