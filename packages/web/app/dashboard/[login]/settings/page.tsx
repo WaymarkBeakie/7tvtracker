@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { resolveChannelAccess } from "@/lib/channel-access";
+import { requireOwner } from "@/lib/channel-access";
 import { SettingsView } from "../../settings-view";
 
 export default async function ChannelSettingsPage({
@@ -13,7 +13,7 @@ export default async function ChannelSettingsPage({
   const session = await auth();
   if (!session) redirect("/");
 
-  const access = await resolveChannelAccess(login);
+  const access = await requireOwner(login);
   if (!access) notFound();
 
   return <SettingsView access={access} channelLogin={login} />;

@@ -2,6 +2,7 @@ import { prisma } from "@emotetracker/db";
 import { BotToggle } from "./bot-toggle";
 import { EmoteGrid } from "./emote-grid";
 import type { ChannelAccess } from "@/lib/channel-access";
+import { BotStatus } from "./bot-status";
 
 export async function DashboardView({
   access,
@@ -50,6 +51,11 @@ export async function DashboardView({
     lastUsed: lastUsedByEmote.get(e.id) ?? null,
   }));
 
+  const channelMeta = await prisma.channel.findUnique({
+    where: { id: channelId },
+    select: { lastEmoteRefresh: true },
+  });
+
   return (
     <main className="bg-neutral-950 text-white px-6 py-10">
       <div className="mx-auto max-w-5xl space-y-8">
@@ -63,17 +69,18 @@ export async function DashboardView({
         </header>
 
         <section className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
-          {/* existing bot toggle section */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-medium">Emote Tracking Bot</h2>
-              <p className="mt-1 text-sm text-neutral-400">
-                {access.channel.botEnabled
-                  ? "The bot is currently active in this chat."
-                  : "The bot is not currently joined to this chat."}
-              </p>
+          <div className="flex items-start justify-between gap-6">
+            <div className="min-w-0 flex-1">
+              <h2 className="mb-3 font-medium">Emote Tracking Bot</h2>
+              <BotStatus
+                botEnabled={access.channel.botEnabled}
+                lastRefresh={channelMeta?.lastEmoteRefresh ?? null}
+                emoteCount={emotes.length}
+              />
             </div>
-            <BotToggle enabled={access.channel.botEnabled} channelLogin={channelLogin} />
+            {access.isOwner && (
+              <BotToggle enabled={access.channel.botEnabled} channelLogin={channelLogin} />
+            )}
           </div>
         </section>
 
@@ -82,7 +89,12 @@ export async function DashboardView({
           {emotes.length === 0 ? (
             <p className="text-sm text-neutral-500">No emotes found for this channel.</p>
           ) : (
-            <EmoteGrid emotes={emotes} channelLogin={channelLogin} timezone={access.channel.timezone} />
+            <EmoteGrid
+              emotes={emotes}
+              channelLogin={channelLogin}
+              timezone={access.channel.timezone}
+              isOwner={access.isOwner}
+            />
           )}
         </section>
       </div>

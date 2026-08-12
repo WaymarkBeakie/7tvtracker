@@ -2,10 +2,10 @@
 
 import { prisma } from "@emotetracker/db";
 import { revalidatePath } from "next/cache";
-import { resolveChannelAccess } from "@/lib/channel-access";
+import { resolveChannelAccess, requireOwner } from "@/lib/channel-access";
 
 export async function toggleBot(enabled: boolean, channelLogin?: string) {
-  const access = await resolveChannelAccess(channelLogin);
+  const access = await requireOwner(channelLogin);
   if (!access) throw new Error("Not authorized");
 
   await prisma.channel.update({
@@ -119,7 +119,7 @@ export async function refreshEmotes(channelLogin?: string) {
 }
 
 export async function resetChannelStats(channelLogin?: string) {
-  const access = await resolveChannelAccess(channelLogin);
+  const access = await requireOwner(channelLogin);
   if (!access) throw new Error("Not authorized");
 
   const channelId = access.channel.id;

@@ -59,3 +59,13 @@ export async function resolveChannelAccess(
 
   return { channel: target, isOwner: false };
 }
+
+/**
+ * Like resolveChannelAccess, but only succeeds for the channel owner.
+ * Use for any mutating or settings-related action.
+ */
+export async function requireOwner(channelLogin?: string): Promise<ChannelAccess | null> {
+  const access = await resolveChannelAccess(channelLogin);
+  if (!access || !access.isOwner) return null;
+  return access;
+}

@@ -3,10 +3,10 @@
 import { prisma } from "@emotetracker/db";
 import { revalidatePath } from "next/cache";
 import { signOut } from "@/auth";
-import { resolveChannelAccess } from "@/lib/channel-access";
+import { requireOwner  } from "@/lib/channel-access";
 
 export async function setTimezone(timezone: string, channelLogin?: string) {
-  const access = await resolveChannelAccess(channelLogin);
+  const access = await requireOwner(channelLogin);
   if (!access) throw new Error("Not authorized");
 
   // Validate against the runtime's own timezone database
@@ -26,7 +26,7 @@ export async function setTimezone(timezone: string, channelLogin?: string) {
 }
 
 export async function exportCsv(channelLogin?: string) {
-  const access = await resolveChannelAccess(channelLogin);
+  const access = await requireOwner(channelLogin);
   if (!access) throw new Error("Not authorized");
 
   const channelId = access.channel.id;
@@ -68,7 +68,7 @@ function csvEscape(value: string) {
 }
 
 export async function syncEditors(channelLogin?: string) {
-  const access = await resolveChannelAccess(channelLogin);
+  const access = await requireOwner(channelLogin);
   if (!access) throw new Error("Not authorized");
 
   const res = await fetch(`https://7tv.io/v3/users/twitch/${access.channel.twitchId}`);
@@ -113,8 +113,8 @@ export async function syncEditors(channelLogin?: string) {
 }
 
 export async function deleteAccount() {
-  const access = await resolveChannelAccess();
-  if (!access || !access.isOwner) throw new Error("Not authorized");
+  const access = await requireOwner();
+  if (!access) throw new Error("Not authorized");
 
   const channelId = access.channel.id;
 

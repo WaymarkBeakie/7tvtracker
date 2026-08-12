@@ -35,11 +35,13 @@ function emoteFullUrl(sevenTvId: string) {
 export function EmoteGrid({
   emotes,
   channelLogin,
-  timezone
+  timezone,
+  isOwner
 }: {
   emotes: EmoteSummary[];
   channelLogin?: string;
   timezone: string;
+  isOwner: boolean;
 }) {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("most");
@@ -156,7 +158,8 @@ export function EmoteGrid({
           className="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-emerald-500/50 focus:outline-none sm:w-64"
         />
         <RefreshButton channelLogin={channelLogin} />
-        <ResetButton channelLogin={channelLogin} />
+        {isOwner && <ResetButton channelLogin={channelLogin} />}
+
         <div className="flex items-center gap-3">
           <span className="text-xs text-neutral-500">
             {filteredEmotes.length} emote{filteredEmotes.length === 1 ? "" : "s"}
