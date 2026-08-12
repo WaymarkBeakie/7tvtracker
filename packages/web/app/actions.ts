@@ -13,6 +13,14 @@ export async function toggleBot(enabled: boolean, channelLogin?: string) {
     data: { botEnabled: enabled },
   });
 
+  if (enabled) {
+    try {
+      await refreshEmotes(channelLogin);
+    } catch (err) {
+      console.error("[toggleBot] initial emote fetch failed:", err);
+    }
+  }
+
   revalidatePath(channelLogin ? `/dashboard/${channelLogin}` : "/dashboard");
 }
 

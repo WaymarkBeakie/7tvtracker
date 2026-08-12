@@ -1,10 +1,16 @@
 "use client";
 
 import { useTransition } from "react";
-import { toggleBot } from "../actions";
 import { useRouter } from "next/navigation";
+import { toggleBot } from "../actions";
 
-export function BotToggle({ enabled, channelLogin }: { enabled: boolean; channelLogin?: string }) {
+export function BotToggle({
+  enabled,
+  channelLogin,
+}: {
+  enabled: boolean;
+  channelLogin?: string;
+}) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -23,7 +29,13 @@ export function BotToggle({ enabled, channelLogin }: { enabled: boolean; channel
           : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
       }`}
     >
-      {isPending ? "Updating…" : enabled ? "Bot Enabled" : "Enable Bot"}
+      {isPending
+        ? enabled
+          ? "Disabling…"
+          : "Fetching emotes…"
+        : enabled
+          ? "Bot Enabled"
+          : "Enable Bot"}
     </button>
   );
 }
