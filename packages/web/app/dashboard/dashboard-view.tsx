@@ -96,6 +96,7 @@ export async function DashboardView({
             botEnabled={access.channel.botEnabled}
             lastSeen={lastHeartbeat}
             uptime={uptimeBuckets}
+            channelLogin={channelLogin}
             toggle={
               access.isOwner ? (
                 <BotToggle enabled={access.channel.botEnabled} channelLogin={channelLogin} />

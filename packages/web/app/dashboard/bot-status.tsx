@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 type Status = "online" | "offline" | "unknown" | "disabled";
+type UptimeBucket = { hour: number; pct: number };
 
 function getStatus(botEnabled: boolean, lastSeen: Date | null): Status {
   if (!botEnabled) return "disabled";
@@ -47,35 +47,67 @@ function formatRelative(date: Date | null) {
 }
 
 function barColor(pct: number, tracked: boolean) {
+  if (!tracked) return "bg-neutral-900";
   if (pct >= 90) return "bg-emerald-500/70";
   if (pct >= 50) return "bg-amber-500/70";
   if (pct > 0) return "bg-red-500/70";
   return "bg-neutral-800";
 }
 
+const POLL_MS = 30_000;
+
 export function BotStatus({
-  botEnabled,
-  lastSeen,
-  uptime,
-  toggle
+  botEnabled: initialEnabled,
+  lastSeen: initialLastSeen,
+  uptime: initialUptime,
+  channelLogin,
+  toggle,
 }: {
   botEnabled: boolean;
   lastSeen: Date | null;
-  uptime: { hour: number; pct: number }[];
+  uptime: UptimeBucket[];
+  channelLogin?: string;
   toggle?: React.ReactNode;
 }) {
+  const [botEnabled, setBotEnabled] = useState(initialEnabled);
+  const [lastSeen, setLastSeen] = useState<Date | null>(initialLastSeen);
+  const [uptime, setUptime] = useState<UptimeBucket[]>(initialUptime);
 
-  const router = useRouter();
+  // Keep in sync when the server re-renders (e.g. after the toggle)
+  useEffect(() => {
+    setBotEnabled(initialEnabled);
+  }, [initialEnabled]);
 
   useEffect(() => {
-    const id = setInterval(() => router.refresh(), 60_000);
-    return () => clearInterval(id);
-  }, [router]);
-  
+    let cancelled = false;
+
+    async function poll() {
+      try {
+        const url = channelLogin
+          ? `/api/status?channel=${encodeURIComponent(channelLogin)}`
+          : "/api/status";
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        setBotEnabled(data.botEnabled);
+        setLastSeen(data.lastSeen ? new Date(data.lastSeen) : null);
+        setUptime(data.uptime ?? []);
+      } catch {
+        // Network blip — keep showing the last known state
+      }
+    }
+
+    const id = setInterval(poll, POLL_MS);
+    poll();
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [channelLogin]);
+
   const status = getStatus(botEnabled, lastSeen);
   const meta = STATUS_META[status];
 
-  // Only average from the first hour we ever saw a heartbeat
   const firstActiveIndex = uptime.findIndex((u) => u.pct > 0);
   const measured = firstActiveIndex === -1 ? [] : uptime.slice(firstActiveIndex);
   const avg =
@@ -85,7 +117,6 @@ export function BotStatus({
 
   return (
     <div className="space-y-4">
-      
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <span className="relative flex h-2.5 w-2.5">
