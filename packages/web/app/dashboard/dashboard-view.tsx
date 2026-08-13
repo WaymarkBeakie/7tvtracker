@@ -53,7 +53,7 @@ export async function DashboardView({
 
   const channelMeta = await prisma.channel.findUnique({
     where: { id: channelId },
-    select: { lastEmoteRefresh: true },
+    select: { lastEmoteRefresh: true, uptimeChartStyle: true },
   });
 
   const dayAgo = new Date(Date.now() - 24 * 3_600_000);
@@ -64,17 +64,23 @@ export async function DashboardView({
     orderBy: { at: "asc" },
   });
 
-  const EXPECTED_PER_HOUR = 12; // heartbeat every 5 minutes
+  const HEARTBEAT_MS = 60_000; // bot writes a heartbeat every minute
+  const now = Date.now();
+
   const uptimeBuckets = Array.from({ length: 24 }, (_, i) => {
-    const slotStart = new Date(Date.now() - (23 - i) * 3_600_000);
+    const slotStart = new Date(now - (23 - i) * 3_600_000);
     slotStart.setMinutes(0, 0, 0);
     const slotEnd = new Date(slotStart.getTime() + 3_600_000);
 
     const seen = heartbeats.filter((h) => h.at >= slotStart && h.at < slotEnd).length;
 
+    // The current hour is partial — only expect heartbeats for the elapsed portion
+    const elapsedMs = Math.min(now, slotEnd.getTime()) - slotStart.getTime();
+    const expected = Math.max(1, Math.floor(elapsedMs / HEARTBEAT_MS));
+
     return {
       hour: slotStart.getUTCHours(),
-      pct: Math.min(100, Math.round((seen / EXPECTED_PER_HOUR) * 100)),
+      pct: Math.min(100, Math.round((seen / expected) * 100)),
     };
   });
 
@@ -96,6 +102,7 @@ export async function DashboardView({
             botEnabled={access.channel.botEnabled}
             lastSeen={lastHeartbeat}
             uptime={uptimeBuckets}
+            chartStyle={(channelMeta?.uptimeChartStyle ?? "bars") as "bars" | "line"}
             channelLogin={channelLogin}
             toggle={
               access.isOwner ? (

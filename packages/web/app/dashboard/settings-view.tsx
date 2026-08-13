@@ -5,6 +5,7 @@ import {
   ExportPanel,
   SyncEditorsPanel,
   DangerPanel,
+  ChartStylePanel,
 } from "./settings-panels";
 
 export async function SettingsView({
@@ -57,6 +58,14 @@ export async function SettingsView({
             Used for the time-of-day chart. Daily totals are always grouped by UTC day.
           </p>
           <TimezonePanel current={channel.timezone} channelLogin={channelLogin} />
+        </section>
+
+        <section className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
+          <h2 className="font-medium">Uptime chart</h2>
+          <p className="mb-4 mt-1 text-sm text-neutral-400">
+            How the bot&apos;s 24-hour uptime is displayed on the dashboard.
+          </p>
+          <ChartStylePanel current={channel.uptimeChartStyle} channelLogin={channelLogin} />
         </section>
 
         <section className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">

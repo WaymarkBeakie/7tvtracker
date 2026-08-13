@@ -15,7 +15,7 @@ export async function GET(req: Request) {
     orderBy: { at: "asc" },
   });
 
-  const HEARTBEAT_MS = 5 * 60_000;
+  const HEARTBEAT_MS = 60_000;
   const now = Date.now();
 
   const uptime = Array.from({ length: 24 }, (_, i) => {

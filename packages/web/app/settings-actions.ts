@@ -134,3 +134,16 @@ export async function deleteAccount() {
 
   await signOut({ redirectTo: "/" });
 }
+
+export async function setUptimeChartStyle(style: "bars" | "line", channelLogin?: string) {
+  const access = await requireOwner(channelLogin);
+  if (!access) throw new Error("Not authorized");
+
+  await prisma.channel.update({
+    where: { id: access.channel.id },
+    data: { uptimeChartStyle: style },
+  });
+
+  revalidatePath(channelLogin ? `/dashboard/${channelLogin}` : "/dashboard");
+  return { ok: true, message: "Saved." };
+}

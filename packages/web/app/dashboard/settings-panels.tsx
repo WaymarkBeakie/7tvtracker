@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { setTimezone, exportCsv, syncEditors, deleteAccount } from "../settings-actions";
+import { setTimezone, exportCsv, syncEditors, deleteAccount, setUptimeChartStyle } from "../settings-actions";
 import { resetChannelStats } from "../actions";
 
 const TIMEZONE_OPTIONS: { zone: string; city: string }[] = [
@@ -94,6 +94,43 @@ export function TimezonePanel({
         {isPending ? "Saving…" : "Save"}
       </button>
       {message && <span className="text-xs text-neutral-500">{message}</span>}
+    </div>
+  );
+}
+
+export function ChartStylePanel({
+  current,
+  channelLogin,
+}: {
+  current: string;
+  channelLogin?: string;
+}) {
+  const [style, setStyle] = useState(current);
+  const [isPending, startTransition] = useTransition();
+
+  function pick(next: "bars" | "line") {
+    setStyle(next);
+    startTransition(() => {
+      setUptimeChartStyle(next, channelLogin);
+    });
+  }
+
+  return (
+    <div className="flex gap-2">
+      {(["bars", "line"] as const).map((s) => (
+        <button
+          key={s}
+          disabled={isPending}
+          onClick={() => pick(s)}
+          className={`rounded-lg px-3 py-1.5 text-sm capitalize transition-colors disabled:opacity-50 ${
+            style === s
+              ? "bg-emerald-500/15 text-emerald-400"
+              : "border border-neutral-800 bg-neutral-900 text-neutral-400 hover:bg-neutral-800"
+          }`}
+        >
+          {s}
+        </button>
+      ))}
     </div>
   );
 }

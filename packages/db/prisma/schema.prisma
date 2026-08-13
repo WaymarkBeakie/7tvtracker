@@ -48,6 +48,7 @@ model Channel {
   editors           ChannelEditor[]
   timezone String   @default("UTC")
   heartbeats        BotHeartbeat[]
+  uptimeChartStyle  String @default("bars")
 }
 
 model Emote {

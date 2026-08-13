@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { UptimeChart } from "./uptime-chart";
 
 type Status = "online" | "offline" | "unknown" | "disabled";
 type UptimeBucket = { hour: number; pct: number };
@@ -48,7 +49,8 @@ function formatRelative(date: Date | null) {
 
 function barColor(pct: number, tracked: boolean) {
   if (!tracked) return "bg-neutral-900";
-  if (pct >= 90) return "bg-emerald-500/70";
+  if (pct >= 99) return "bg-emerald-500";
+  if (pct >= 90) return "bg-emerald-500/45";
   if (pct >= 50) return "bg-amber-500/70";
   if (pct > 0) return "bg-red-500/70";
   return "bg-neutral-800";
@@ -62,16 +64,19 @@ export function BotStatus({
   uptime: initialUptime,
   channelLogin,
   toggle,
+  chartStyle
 }: {
   botEnabled: boolean;
   lastSeen: Date | null;
   uptime: UptimeBucket[];
   channelLogin?: string;
   toggle?: React.ReactNode;
+  chartStyle: "bars" | "line";
 }) {
   const [botEnabled, setBotEnabled] = useState(initialEnabled);
   const [lastSeen, setLastSeen] = useState<Date | null>(initialLastSeen);
   const [uptime, setUptime] = useState<UptimeBucket[]>(initialUptime);
+  const [showUptime, setShowUptime] = useState(false);
 
   // Keep in sync when the server re-renders (e.g. after the toggle)
   useEffect(() => {
@@ -138,24 +143,9 @@ export function BotStatus({
           <span className="text-xs text-neutral-500">Last 24 hours</span>
           <span className="font-mono text-xs text-neutral-400">{avg}% uptime</span>
         </div>
-        <div className="flex h-8 items-end gap-[2px]">
-          {uptime.map((u, i) => {
-            const tracked = firstActiveIndex !== -1 && i >= firstActiveIndex;
-            return (
-              <div
-                key={i}
-                title={
-                  tracked
-                    ? `${String(u.hour).padStart(2, "0")}:00 UTC — ${u.pct}%`
-                    : "No data"
-                }
-                className={`flex-1 rounded-sm ${barColor(u.pct, tracked)}`}
-                style={{ height: `${Math.max(8, u.pct)}%` }}
-              />
-            );
-          })}
-        </div>
+        <UptimeChart uptime={uptime} style={chartStyle} />
       </div>
+
     </div>
   );
 }
