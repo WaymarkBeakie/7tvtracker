@@ -123,14 +123,12 @@ export async function deleteAccount() {
     prisma.emoteUsageDaily.deleteMany({ where: { channelId } }),
     prisma.channelEmoteTotal.deleteMany({ where: { channelId } }),
     prisma.channelEditor.deleteMany({ where: { channelId } }),
-    prisma.emote.deleteMany({ where: { channelId } }),
+    prisma.channelEmote.deleteMany({ where: { channelId } }),
+    prisma.botHeartbeat.deleteMany({ where: { channelId } }),
     prisma.channel.delete({ where: { id: channelId } }),
   ]);
 
-  const user = await prisma.user.findFirst({ where: { channel: null } });
-  if (user) {
-    await prisma.user.delete({ where: { id: user.id } });
-  }
+  await prisma.user.delete({ where: { id: access.channel.ownerId } });
 
   await signOut({ redirectTo: "/" });
 }

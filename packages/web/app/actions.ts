@@ -84,7 +84,7 @@ export async function getEmoteStats(emoteId: string, days = 14, channelLogin?: s
 }
 
 export async function refreshEmotes(channelLogin?: string) {
-  const access = await resolveChannelAccess(channelLogin);
+  const access = await requireOwner(channelLogin);
   if (!access) throw new Error("Not authorized");
 
   const channel = access.channel;
@@ -102,15 +102,23 @@ export async function refreshEmotes(channelLogin?: string) {
     return { ok: false, message: "7TV returned no emotes — skipping to avoid data loss." };
   }
 
+  const emoteIds: string[] = [];
+
   for (const e of emotes) {
-    await prisma.emote.upsert({
+    const row = await prisma.emote.upsert({
       where: { sevenTvId: e.id },
       update: { name: e.name },
-      create: { sevenTvId: e.id, name: e.name, channelId: channel.id },
+      create: { sevenTvId: e.id, name: e.name },
+    });
+    emoteIds.push(row.id);
+
+    await prisma.channelEmote.upsert({
+      where: { channelId_emoteId: { channelId: channel.id, emoteId: row.id } },
+      update: {},
+      create: { channelId: channel.id, emoteId: row.id },
     });
   }
 
-const emoteIds: string[] = [];
   const removed = await prisma.channelEmote.deleteMany({
     where: { channelId: channel.id, emoteId: { notIn: emoteIds } },
   });
