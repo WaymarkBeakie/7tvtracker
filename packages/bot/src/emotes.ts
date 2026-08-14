@@ -32,14 +32,25 @@ async function fetchSevenTvGlobalEmotes(): Promise<SevenTvEmote[]> {
 
 async function upsertEmotes(emotes: SevenTvEmote[], channelDbId: string | null) {
   const nameToId = new Map<string, string>();
+
   for (const e of emotes) {
     const row = await prisma.emote.upsert({
       where: { sevenTvId: e.id },
       update: { name: e.name },
-      create: { sevenTvId: e.id, name: e.name, channelId: channelDbId },
+      create: { sevenTvId: e.id, name: e.name },
     });
+
+    if (channelDbId) {
+      await prisma.channelEmote.upsert({
+        where: { channelId_emoteId: { channelId: channelDbId, emoteId: row.id } },
+        update: {},
+        create: { channelId: channelDbId, emoteId: row.id },
+      });
+    }
+
     nameToId.set(e.name, row.id);
   }
+
   return nameToId;
 }
 
@@ -51,40 +62,23 @@ export async function refreshChannelEmotes(
   const { emoteSetId, emotes, editors } = await fetchSevenTvChannelData(channelTwitchId);
   const nameToId = await upsertEmotes(emotes, channelDbId);
 
-  const activeSevenTvIds = emotes.map((e) => e.id);
-
-  let deletedCount = 0;
-  if (activeSevenTvIds.length > 0) {
-    const deleted = await prisma.emote.deleteMany({
-      where: { channelId: channelDbId, sevenTvId: { notIn: activeSevenTvIds } },
+  let removedCount = 0;
+  if (emotes.length > 0) {
+    const keepIds = Array.from(nameToId.values());
+    const removed = await prisma.channelEmote.deleteMany({
+      where: { channelId: channelDbId, emoteId: { notIn: keepIds } },
     });
-    deletedCount = deleted.count;
-  }
+    removedCount = removed.count;
 
-  await prisma.channel.update({
-    where: { id: channelDbId },
-    data: { sevenTvEmoteSetId: emoteSetId, lastEmoteRefresh: new Date() },
-  });
-
-  channelEmoteCache.set(channelLogin.toLowerCase(), nameToId);
-  console.log(
-    `[emotes] cached ${nameToId.size} channel emotes for #${channelLogin}` +
-      (deletedCount > 0 ? ` (${deletedCount} removed)` : "")
-  );
-
-    // Sync editors
-  for (const editor of editors) {
-    await prisma.channelEditor.upsert({
-      where: {
-        channelId_sevenTvUserId: { channelId: channelDbId, sevenTvUserId: editor.id },
-      },
-      update: { permissions: editor.permissions },
-      create: {
-        channelId: channelDbId,
-        sevenTvUserId: editor.id,
-        permissions: editor.permissions,
-        addedAt: new Date(editor.added_at),
-      },
+    // Drop the channel's counters for emotes it no longer has
+    await prisma.channelEmoteTotal.deleteMany({
+      where: { channelId: channelDbId, emoteId: { notIn: keepIds } },
+    });
+    await prisma.emoteUsageDaily.deleteMany({
+      where: { channelId: channelDbId, emoteId: { notIn: keepIds } },
+    });
+    await prisma.emoteUsage.deleteMany({
+      where: { channelId: channelDbId, emoteId: { notIn: keepIds } },
     });
   }
 
@@ -95,6 +89,17 @@ export async function refreshChannelEmotes(
       sevenTvUserId: { notIn: editors.map((e) => e.id) },
     },
   });
+
+  await prisma.channel.update({
+    where: { id: channelDbId },
+    data: { sevenTvEmoteSetId: emoteSetId, lastEmoteRefresh: new Date() },
+  });
+
+  channelEmoteCache.set(channelLogin.toLowerCase(), nameToId);
+  console.log(
+    `[emotes] cached ${nameToId.size} channel emotes for #${channelLogin}` +
+      (removedCount > 0 ? ` (${removedCount} removed)` : "")
+  );
 
   return emoteSetId;
 }

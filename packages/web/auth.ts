@@ -38,8 +38,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         update: {
           login,
           displayName: user.name ?? "",
-          accessToken: account.access_token ?? "",
-          refreshToken: account.refresh_token ?? "",
           ...(sevenTvId ? { sevenTvId } : {}),
         },
         create: {
@@ -47,8 +45,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           sevenTvId,
           login,
           displayName: user.name ?? "",
-          accessToken: account.access_token ?? "",
-          refreshToken: account.refresh_token ?? "",
           channel: {
             create: {
               twitchId: account.providerAccountId,

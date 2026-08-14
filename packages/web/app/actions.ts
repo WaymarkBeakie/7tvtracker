@@ -110,8 +110,19 @@ export async function refreshEmotes(channelLogin?: string) {
     });
   }
 
-  const deleted = await prisma.emote.deleteMany({
-    where: { channelId: channel.id, sevenTvId: { notIn: emotes.map((e) => e.id) } },
+const emoteIds: string[] = [];
+  const removed = await prisma.channelEmote.deleteMany({
+    where: { channelId: channel.id, emoteId: { notIn: emoteIds } },
+  });
+
+  await prisma.channelEmoteTotal.deleteMany({
+    where: { channelId: channel.id, emoteId: { notIn: emoteIds } },
+  });
+  await prisma.emoteUsageDaily.deleteMany({
+    where: { channelId: channel.id, emoteId: { notIn: emoteIds } },
+  });
+  await prisma.emoteUsage.deleteMany({
+    where: { channelId: channel.id, emoteId: { notIn: emoteIds } },
   });
 
   await prisma.channel.update({
@@ -122,7 +133,7 @@ export async function refreshEmotes(channelLogin?: string) {
   revalidatePath(channelLogin ? `/dashboard/${channelLogin}` : "/dashboard");
   return {
     ok: true,
-    message: `Synced ${emotes.length} emote(s)${deleted.count > 0 ? `, removed ${deleted.count}` : ""}.`,
+    message: `Synced ${emotes.length} emote(s)${removed.count > 0 ? `, removed ${removed.count}` : ""}.`,
   };
 }
 

@@ -13,9 +13,14 @@ export async function DashboardView({
 }) {
   const channelId = access.channel.id;
 
-  const channelEmotes = await prisma.emote.findMany({ where: { channelId } });
+  const channelEmotes = await prisma.channelEmote.findMany({
+    where: { channelId },
+    include: { emote: true },
+  });
+
   const totals = await prisma.channelEmoteTotal.findMany({ where: { channelId } });
   const countByEmoteId = new Map(totals.map((t) => [t.emoteId, t.count]));
+
   const todayStart = new Date();
   
   todayStart.setHours(0, 0, 0, 0);
@@ -43,12 +48,12 @@ export async function DashboardView({
     lastUsedByEmote.set(row.emoteId, todayStart.toISOString());
   }
 
-  const emotes = channelEmotes.map((e) => ({
-    id: e.id,
-    name: e.name,
-    sevenTvId: e.sevenTvId,
-    count: countByEmoteId.get(e.id) ?? 0,
-    lastUsed: lastUsedByEmote.get(e.id) ?? null,
+  const emotes = channelEmotes.map((ce) => ({
+    id: ce.emote.id,
+    name: ce.emote.name,
+    sevenTvId: ce.emote.sevenTvId,
+    count: countByEmoteId.get(ce.emoteId) ?? 0,
+    lastUsed: lastUsedByEmote.get(ce.emoteId) ?? null,
   }));
 
   const channelMeta = await prisma.channel.findUnique({

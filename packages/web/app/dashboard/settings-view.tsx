@@ -17,7 +17,7 @@ export async function SettingsView({
 }) {
   const channel = await prisma.channel.findUnique({
     where: { id: access.channel.id },
-    include: { editors: true, _count: { select: { emotes: true } } },
+    include: { editors: true, _count: { select: { channelEmotes: true } } },
   });
   if (!channel) return null;
 
@@ -39,7 +39,7 @@ export async function SettingsView({
             </div>
             <div className="flex justify-between">
               <dt className="text-neutral-400">Tracked emotes</dt>
-              <dd className="font-mono text-neutral-300">{channel._count.emotes}</dd>
+              <dd className="font-mono text-neutral-300">{channel._count.channelEmotes}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-neutral-400">Last emote sync</dt>

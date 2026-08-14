@@ -13,8 +13,6 @@ model User {
   sevenTvId    String?
   login        String
   displayName  String
-  accessToken  String
-  refreshToken String
   createdAt    DateTime @default(now())
   channel      Channel?
 }
@@ -41,7 +39,6 @@ model Channel {
   lastEmoteRefresh  DateTime?
   ownerId           String       @unique
   owner             User         @relation(fields: [ownerId], references: [id])
-  emotes            Emote[]
   usages            EmoteUsage[]
   emoteTotals       ChannelEmoteTotal[]
   dailyUsages       EmoteUsageDaily[]
@@ -49,17 +46,28 @@ model Channel {
   timezone String   @default("UTC")
   heartbeats        BotHeartbeat[]
   uptimeChartStyle  String @default("bars")
+  channelEmotes     ChannelEmote[]
 }
 
 model Emote {
   id          String              @id @default(cuid())
   sevenTvId   String              @unique
   name        String
-  channelId   String?
-  channel     Channel?            @relation(fields: [channelId], references: [id])
+  channels    ChannelEmote[]
   usages      EmoteUsage[]
   totals      ChannelEmoteTotal[]
   dailyUsages EmoteUsageDaily[]
+}
+
+model ChannelEmote {
+  channelId String
+  emoteId   String
+  channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  emote     Emote @relation(fields: [emoteId], references: [id])
+  addedAt   DateTime @default(now())
+
+  @@id([channelId, emoteId])
+  @@index([channelId])
 }
 
 model EmoteUsage {
@@ -67,7 +75,7 @@ model EmoteUsage {
   channelId String
   channel   Channel  @relation(fields: [channelId], references: [id])
   emoteId   String
-  emote     Emote    @relation(fields: [emoteId], references: [id], onDelete: Cascade)
+  emote     Emote @relation(fields: [emoteId], references: [id])
   usedAt    DateTime @default(now())
 
   @@index([channelId, usedAt])
@@ -79,7 +87,7 @@ model EmoteUsageDaily {
   channelId  String
   channel    Channel  @relation(fields: [channelId], references: [id])
   emoteId    String
-  emote      Emote    @relation(fields: [emoteId], references: [id], onDelete: Cascade)
+  emote      Emote @relation(fields: [emoteId], references: [id])
   date       DateTime
   count      Int      @default(0)
   hourCounts Int[]    @default([])
@@ -93,7 +101,7 @@ model ChannelEmoteTotal {
   channelId String
   emoteId   String
   channel   Channel  @relation(fields: [channelId], references: [id])
-  emote     Emote    @relation(fields: [emoteId], references: [id], onDelete: Cascade)
+  emote     Emote    @relation(fields: [emoteId], references: [id])
   count     Int      @default(0)
   updatedAt DateTime @updatedAt
 
